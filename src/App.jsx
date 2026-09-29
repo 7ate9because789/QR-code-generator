@@ -3,32 +3,7 @@ import QRCode from 'qrcode';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 
-// Google G pixel art matrix (24 cols x 21 rows)
-// R: Google Red, Y: Google Yellow, G: Google Green, B: Google Blue, ' ': Background pixel
-const GOOGLE_G_MATRIX = [
-  "        RRRRRRRR        ", // 0
-  "      RRRRRRRRRRRR      ", // 1
-  "    RRRRR      RRRRR    ", // 2
-  "   RRRR          RRRR   ", // 3
-  "  RRRR            RRRR  ", // 4
-  " RRRR              RRRR ", // 5
-  " YYYY                   ", // 6
-  "YYYY                    ", // 7
-  "YYYY                    ", // 8
-  "YYYY                    ", // 9
-  "YYYY        BBBBBBBBBBB ", // 10
-  "YYYY        BBBBBBBBBBB ", // 11
-  "YYYY        BBBBBBBBBBB ", // 12
-  "YYYY        BBBBBBBBBBB ", // 13
-  " YYYY              BBBB ", // 14
-  " GGGG              BBBB ", // 15
-  "  GGGG            BBBB  ", // 16
-  "   GGGG          BBBB   ", // 17
-  "    GGGGG      BBBBB    ", // 18
-  "     GGGGGGGGGGGGGG     ", // 19
-  "       GGGGGGGGGG       ", // 20
-];
-
+// Google Brand Color Map
 const COLOR_MAP = {
   R: '#EA4335', // Google Red
   Y: '#FBBC05', // Google Yellow
@@ -36,7 +11,7 @@ const COLOR_MAP = {
   B: '#4285F4', // Google Blue
 };
 
-// Selectable QR Types with clean SVG icons matching Image 2's pill aesthetics
+// Selectable QR Types with SVG icons matching Image 2's pill aesthetics
 const QR_TYPES = [
   {
     id: 'url',
@@ -95,7 +70,7 @@ const QR_TYPES = [
   },
 ];
 
-// Rosette Geometric Symbol from Image 2
+// Rosette Geometric Symbol from reference screenshot
 const RosetteIcon = () => (
   <svg width="34" height="34" viewBox="0 0 32 32" fill="none" stroke="#1f2937" strokeWidth="1.35">
     <circle cx="16" cy="16" r="4.5" />
@@ -118,10 +93,12 @@ function App() {
   const [isRevealed, setIsRevealed] = useState(false);
   const isRevealedRef = useRef(false);
 
+  const leftPanelRef = useRef(null);
   const qrCanvasRef = useRef(null);
   const particleCanvasRef = useRef(null);
   const particlesRef = useRef([]);
   const animFrameIdRef = useRef(null);
+  const gridSizeRef = useRef(8);
 
   // Sync ref with state
   useEffect(() => {
@@ -149,7 +126,7 @@ function App() {
     }
   }, []);
 
-  // Determine QR payload
+  // Determine QR string payload
   const getQrValue = useCallback(() => {
     switch (qrType) {
       case 'email':
@@ -174,7 +151,7 @@ function App() {
         qrCanvasRef.current,
         qrValue,
         {
-          width: 260,
+          width: 280,
           margin: 1,
           color: {
             dark: '#111827',
@@ -191,51 +168,37 @@ function App() {
   // Handle URL/Text change with automatic switch back to default logo state
   const handleTextChange = (e) => {
     setText(e.target.value);
-    if (isRevealedRef.current) {
-      resetToDefault();
-    }
+    if (isRevealedRef.current) resetToDefault();
   };
 
   const handleEmailChange = (e) => {
     setEmail(e.target.value);
-    if (isRevealedRef.current) {
-      resetToDefault();
-    }
+    if (isRevealedRef.current) resetToDefault();
   };
 
   const handlePhoneChange = (e) => {
     setPhone(e.target.value);
-    if (isRevealedRef.current) {
-      resetToDefault();
-    }
+    if (isRevealedRef.current) resetToDefault();
   };
 
   const handleWifiSsidChange = (e) => {
     setWifiSsid(e.target.value);
-    if (isRevealedRef.current) {
-      resetToDefault();
-    }
+    if (isRevealedRef.current) resetToDefault();
   };
 
   const handleWifiPasswordChange = (e) => {
     setWifiPassword(e.target.value);
-    if (isRevealedRef.current) {
-      resetToDefault();
-    }
+    if (isRevealedRef.current) resetToDefault();
   };
 
   const handleWifiEncryptionChange = (e) => {
     setWifiEncryption(e.target.value);
-    if (isRevealedRef.current) {
-      resetToDefault();
-    }
+    if (isRevealedRef.current) resetToDefault();
   };
 
   const handleTypeSelect = (selectedType) => {
     setQrType(selectedType);
-    if (isRevealedRef.current) {
-      resetToDefault();
-    }
+    if (isRevealedRef.current) resetToDefault();
   };
 
   // Download QR Code PNG
@@ -248,27 +211,21 @@ function App() {
     link.click();
   };
 
-  // Canvas Particle Grid Setup & Animation Loop
-  useEffect(() => {
-    const canvas = particleCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+  // High-Resolution Enlarged Google Logo Particle Grid Initialization
+  const setupParticles = useCallback((width, height) => {
+    // 8px - 9px grid provides thousands of dense, vibrant pixel particles
+    const gridSize = 8.5;
+    gridSizeRef.current = gridSize;
 
-    const width = 360;
-    const height = 360;
-    canvas.width = width;
-    canvas.height = height;
-
-    const gridSize = 12; // 30 columns x 30 rows
     const cols = Math.floor(width / gridSize);
     const rows = Math.floor(height / gridSize);
+    const cx = Math.floor(cols / 2);
+    const cy = Math.floor(rows / 2);
 
-    const logoMatrixCols = GOOGLE_G_MATRIX[0].length; // 24
-    const logoMatrixRows = GOOGLE_G_MATRIX.length;    // 21
-
-    // Center enlarged Google logo within the 30x30 grid
-    const offsetCol = Math.floor((cols - logoMatrixCols) / 2);
-    const offsetRow = Math.floor((rows - logoMatrixRows) / 2);
+    // Enlarge the Google G logo to fill ~72% of the left half
+    const outerR = Math.min(cols, rows) * 0.36;
+    const innerR = outerR * 0.58;
+    const barH = Math.max(3, (outerR - innerR) * 0.46);
 
     const particles = [];
     for (let r = 0; r < rows; r++) {
@@ -276,27 +233,53 @@ function App() {
         const x = c * gridSize + gridSize / 2;
         const y = r * gridSize + gridSize / 2;
 
-        const logoR = r - offsetRow;
-        const logoC = c - offsetCol;
+        const dx = c - cx;
+        const dy = r - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const theta = Math.atan2(dy, dx);
+        const deg = (theta * 180) / Math.PI;
+
         let char = ' ';
-        if (logoR >= 0 && logoR < logoMatrixRows && logoC >= 0 && logoC < logoMatrixCols) {
-          char = GOOGLE_G_MATRIX[logoR][logoC] || ' ';
+        const inCrossbar = c >= cx - 1 && c <= cx + outerR && Math.abs(dy) <= barH;
+        const inRing = dist >= innerR && dist <= outerR;
+
+        if (inCrossbar) {
+          char = 'B'; // Blue horizontal crossbar
+        } else if (inRing) {
+          if (deg >= -42 && deg < 0) {
+            char = ' '; // Open gap above blue bar
+          } else if (deg >= -140 && deg < -42) {
+            char = 'R'; // Red top arch
+          } else if (deg >= 0 && deg < 50) {
+            char = 'B'; // Blue bottom-right arc
+          } else if (deg >= 50 && deg < 135) {
+            char = 'G'; // Green bottom arch
+          } else {
+            char = 'Y'; // Yellow left arc
+          }
         }
 
         const isLogo = char !== ' ';
-        const color = isLogo ? COLOR_MAP[char] : '#f1f5f9';
+        const color = isLogo ? COLOR_MAP[char] : '#f8fafc';
+
+        // Outward explosion physics setup
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const angleFromCenter = Math.atan2(y - centerY, x - centerX);
+        const distFromCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+        const speed = 3.2 + Math.random() * 4.5 + (distFromCenter / width) * 3.5;
 
         particles.push({
           originX: x,
           originY: y,
           x: x,
           y: y,
-          vx: 0,
-          vy: 0,
+          vx: Math.cos(angleFromCenter) * speed,
+          vy: Math.sin(angleFromCenter) * speed,
           rotation: 0,
-          rotSpeed: 0,
+          rotSpeed: (Math.random() - 0.5) * 0.24,
           flip: 0,
-          flipSpeed: 0,
+          flipSpeed: 0.1 + Math.random() * 0.1,
           targetX: x,
           targetY: y,
           targetFlip: 0,
@@ -308,6 +291,27 @@ function App() {
     }
 
     particlesRef.current = particles;
+  }, []);
+
+  // Setup Canvas and Animation Loop
+  useEffect(() => {
+    const canvas = particleCanvasRef.current;
+    const container = leftPanelRef.current;
+    if (!canvas || !container) return;
+    const ctx = canvas.getContext('2d');
+
+    const updateCanvasSize = () => {
+      const rect = container.getBoundingClientRect();
+      const width = Math.floor(rect.width);
+      const height = Math.floor(rect.height);
+      if (width > 0 && height > 0) {
+        canvas.width = width;
+        canvas.height = height;
+        setupParticles(width, height);
+      }
+    };
+
+    updateCanvasSize();
 
     let mouseX = -1000;
     let mouseY = -1000;
@@ -325,26 +329,37 @@ function App() {
 
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('resize', updateCanvasSize);
 
     const render = () => {
+      const width = canvas.width;
+      const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
 
       const revealed = isRevealedRef.current;
+      const gridSize = gridSizeRef.current;
+      const size = gridSize - 1.2;
 
       particlesRef.current.forEach((p) => {
         if (!revealed) {
-          // Hover interaction: proximity repulsion and subtle 3D turnover tilt
+          // Fast bounding box proximity check
           const dx = mouseX - p.originX;
           const dy = mouseY - p.originY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const maxDist = 72;
 
-          if (dist < maxDist) {
-            const force = (1 - dist / maxDist) * 20;
-            const angle = Math.atan2(dy, dx);
-            p.targetX = p.originX - Math.cos(angle) * force;
-            p.targetY = p.originY - Math.sin(angle) * force;
-            p.targetFlip = (1 - dist / maxDist) * 0.45;
+          if (Math.abs(dx) < 85 && Math.abs(dy) < 85) {
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxDist = 85;
+            if (dist < maxDist) {
+              const force = (1 - dist / maxDist) * 22;
+              const angle = Math.atan2(dy, dx);
+              p.targetX = p.originX - Math.cos(angle) * force;
+              p.targetY = p.originY - Math.sin(angle) * force;
+              p.targetFlip = (1 - dist / maxDist) * 0.45;
+            } else {
+              p.targetX = p.originX;
+              p.targetY = p.originY;
+              p.targetFlip = 0;
+            }
           } else {
             p.targetX = p.originX;
             p.targetY = p.originY;
@@ -362,37 +377,39 @@ function App() {
           p.vy *= 1.02;
           p.rotation += p.rotSpeed;
           p.flip += p.flipSpeed;
-          p.opacity = Math.max(0, p.opacity - 0.022);
+          p.opacity = Math.max(0, p.opacity - 0.024);
         }
 
         if (p.opacity > 0.01) {
-          ctx.save();
-          ctx.globalAlpha = p.opacity;
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.rotation);
+          const isTransformed = Math.abs(p.flip) > 0.01 || Math.abs(p.rotation) > 0.01;
 
-          // 3D perspective flip (turnover)
-          const flipScale = Math.cos(p.flip);
-          ctx.scale(flipScale, 1);
+          if (isTransformed || p.opacity < 0.99) {
+            ctx.save();
+            if (p.opacity < 0.99) ctx.globalAlpha = p.opacity;
+            ctx.translate(p.x, p.y);
+            if (p.rotation) ctx.rotate(p.rotation);
+            if (p.flip) ctx.scale(Math.cos(p.flip), 1);
 
-          ctx.fillStyle = p.color;
-          const size = gridSize - 2;
-          ctx.beginPath();
-          if (ctx.roundRect) {
-            ctx.roundRect(-size / 2, -size / 2, size, size, p.isLogo ? 2 : 1);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-size / 2, -size / 2, size, size);
+
+            if (!p.isLogo) {
+              ctx.strokeStyle = 'rgba(226, 232, 240, 0.55)';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(-size / 2, -size / 2, size, size);
+            }
+            ctx.restore();
           } else {
-            ctx.rect(-size / 2, -size / 2, size, size);
-          }
-          ctx.fill();
+            // Ultra-fast direct fill for resting grid particles
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
 
-          // Crisp subtle borders on background grid tiles
-          if (!p.isLogo) {
-            ctx.strokeStyle = 'rgba(226, 232, 240, 0.75)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
+            if (!p.isLogo) {
+              ctx.strokeStyle = 'rgba(226, 232, 240, 0.55)';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(p.x - size / 2, p.y - size / 2, size, size);
+            }
           }
-
-          ctx.restore();
         }
       });
 
@@ -405,8 +422,9 @@ function App() {
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('resize', updateCanvasSize);
     };
-  }, []);
+  }, [setupParticles]);
 
   // Trigger circular turnover explosion when clicking panel
   const handlePanelClick = () => {
@@ -414,8 +432,8 @@ function App() {
     setIsRevealed(true);
 
     const canvas = particleCanvasRef.current;
-    const width = canvas ? canvas.width : 360;
-    const height = canvas ? canvas.height : 360;
+    const width = canvas ? canvas.width : 600;
+    const height = canvas ? canvas.height : 600;
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -424,35 +442,37 @@ function App() {
       const dy = p.y - centerY;
       const angle = Math.atan2(dy, dx);
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const speed = 2.8 + Math.random() * 3.8 + (dist / width) * 2.5;
+      const speed = 3.2 + Math.random() * 4.5 + (dist / width) * 3.5;
 
       p.vx = Math.cos(angle) * speed;
       p.vy = Math.sin(angle) * speed;
-      p.rotSpeed = (Math.random() - 0.5) * 0.22;
-      p.flipSpeed = 0.09 + Math.random() * 0.09;
+      p.rotSpeed = (Math.random() - 0.5) * 0.25;
+      p.flipSpeed = 0.1 + Math.random() * 0.1;
     });
   };
 
   return (
-    <div style={styles.pageWrapper}>
-      <div className="split-panel-container" style={styles.splitContainer}>
-        {/* LEFT PANEL: 360x360 Canvas Pixel Grid / QR Reveal */}
+    <div className="page-wrapper">
+      <div className="split-panel-container">
+        {/* LEFT PANEL: Occupies the entire left half of screen */}
         <div
+          ref={leftPanelRef}
           className="split-panel-left"
-          style={styles.leftPanel}
           onClick={handlePanelClick}
           title={isRevealed ? '' : 'Click to explode pixels and reveal QR code'}
         >
-          {/* 360x360 Particle Canvas */}
+          {/* Full-width dynamic particle canvas */}
           <canvas
             ref={particleCanvasRef}
             style={{
-              ...styles.particleCanvas,
+              width: '100%',
+              height: '100%',
+              display: 'block',
               pointerEvents: isRevealed ? 'none' : 'auto',
             }}
           />
 
-          {/* QR Code Reveal underneath using Framer Motion */}
+          {/* QR Code Reveal in center of left half using Framer Motion */}
           <AnimatePresence>
             {isRevealed && (
               <motion.div
@@ -478,162 +498,164 @@ function App() {
           </AnimatePresence>
         </div>
 
-        {/* RIGHT PANEL: Clean Circular / Pill-Shaped Selectables & Inputs */}
-        <div className="split-panel-right" style={styles.rightPanel}>
-          {/* Header with Rosette Geometric Icon */}
-          <div style={styles.headerGroup}>
-            <div style={styles.iconWrapper}>
-              <RosetteIcon />
+        {/* RIGHT PANEL: Occupies the entire right half of screen */}
+        <div className="split-panel-right">
+          <div className="right-form-inner">
+            {/* Header with Rosette Geometric Icon matching Image 2 */}
+            <div style={styles.headerGroup}>
+              <div style={styles.iconWrapper}>
+                <RosetteIcon />
+              </div>
+              <h2 style={styles.heading}>QR Code Generator</h2>
             </div>
-            <h2 style={styles.heading}>QR Code Generator</h2>
-          </div>
 
-          {/* Selectable Pill Buttons */}
-          <div style={styles.selectablesContainer}>
-            {QR_TYPES.map((item) => {
-              const isSelected = qrType === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`selectable-pill ${isSelected ? 'active' : ''}`}
-                  onClick={() => handleTypeSelect(item.id)}
-                  style={{
-                    ...styles.selectablePill,
-                    backgroundColor: isSelected ? '#111827' : '#f3f4f6',
-                    color: isSelected ? '#ffffff' : '#374151',
-                    border: isSelected ? '1.5px solid #111827' : '1.5px solid transparent',
-                  }}
+            {/* Selectable Pill Buttons */}
+            <div style={styles.selectablesContainer}>
+              {QR_TYPES.map((item) => {
+                const isSelected = qrType === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`selectable-pill ${isSelected ? 'active' : ''}`}
+                    onClick={() => handleTypeSelect(item.id)}
+                    style={{
+                      ...styles.selectablePill,
+                      backgroundColor: isSelected ? '#111827' : '#f3f4f6',
+                      color: isSelected ? '#ffffff' : '#374151',
+                      border: isSelected ? '1.5px solid #111827' : '1.5px solid transparent',
+                    }}
+                  >
+                    <span style={styles.selectableIcon}>{item.icon}</span>
+                    <span style={styles.selectableLabel}>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Divider matching Image 2 */}
+            <div style={styles.divider}>
+              <span style={styles.dividerLine} />
+              <span style={styles.dividerText}>ENTER DETAILS</span>
+              <span style={styles.dividerLine} />
+            </div>
+
+            {/* Circular / Pill Inputs */}
+            <AnimatePresence mode="wait">
+              {(qrType === 'url' || qrType === 'text') && (
+                <motion.div
+                  key="url-text"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.16 }}
+                  style={styles.inputGroup}
                 >
-                  <span style={styles.selectableIcon}>{item.icon}</span>
-                  <span style={styles.selectableLabel}>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+                  <input
+                    className="pill-input"
+                    type="text"
+                    value={text}
+                    onChange={handleTextChange}
+                    placeholder={qrType === 'url' ? 'e.g., https://google.com' : 'e.g., Type message here...'}
+                    style={styles.pillInput}
+                  />
+                </motion.div>
+              )}
 
-          {/* Divider matching Image 2 */}
-          <div style={styles.divider}>
-            <span style={styles.dividerLine} />
-            <span style={styles.dividerText}>ENTER DETAILS</span>
-            <span style={styles.dividerLine} />
-          </div>
-
-          {/* Circular / Pill Inputs */}
-          <AnimatePresence mode="wait">
-            {(qrType === 'url' || qrType === 'text') && (
-              <motion.div
-                key="url-text"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.16 }}
-                style={styles.inputGroup}
-              >
-                <input
-                  className="pill-input"
-                  type="text"
-                  value={text}
-                  onChange={handleTextChange}
-                  placeholder={qrType === 'url' ? 'e.g., https://google.com' : 'e.g., Type message here...'}
-                  style={styles.pillInput}
-                />
-              </motion.div>
-            )}
-
-            {qrType === 'email' && (
-              <motion.div
-                key="email"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.16 }}
-                style={styles.inputGroup}
-              >
-                <input
-                  className="pill-input"
-                  type="email"
-                  value={email}
-                  onChange={handleEmailChange}
-                  placeholder="e.g., name@company.com"
-                  style={styles.pillInput}
-                />
-              </motion.div>
-            )}
-
-            {qrType === 'phone' && (
-              <motion.div
-                key="phone"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.16 }}
-                style={styles.inputGroup}
-              >
-                <input
-                  className="pill-input"
-                  type="tel"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  placeholder="e.g., +1 (555) 000-0000"
-                  style={styles.pillInput}
-                />
-              </motion.div>
-            )}
-
-            {qrType === 'wifi' && (
-              <motion.div
-                key="wifi"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.16 }}
-                style={styles.wifiContainer}
-              >
-                <input
-                  className="pill-input"
-                  type="text"
-                  value={wifiSsid}
-                  onChange={handleWifiSsidChange}
-                  placeholder="e.g., Network Name (SSID)"
-                  style={styles.pillInput}
-                />
-
-                <input
-                  className="pill-input"
-                  type="password"
-                  value={wifiPassword}
-                  onChange={handleWifiPasswordChange}
-                  placeholder="Network Password"
-                  style={styles.pillInput}
-                />
-
-                <select
-                  className="pill-input"
-                  value={wifiEncryption}
-                  onChange={handleWifiEncryptionChange}
-                  style={styles.pillSelect}
+              {qrType === 'email' && (
+                <motion.div
+                  key="email"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.16 }}
+                  style={styles.inputGroup}
                 >
-                  <option value="WPA">WPA / WPA2 / WPA3</option>
-                  <option value="WEP">WEP</option>
-                  <option value="nopass">Open (No Password)</option>
-                </select>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <input
+                    className="pill-input"
+                    type="email"
+                    value={email}
+                    onChange={handleEmailChange}
+                    placeholder="e.g., name@company.com"
+                    style={styles.pillInput}
+                  />
+                </motion.div>
+              )}
 
-          {/* Action Button matching Image 2 "Continue" pill button */}
-          <button
-            className="action-pill-btn"
-            style={styles.actionPillBtn}
-            onClick={handlePanelClick}
-          >
-            {isRevealed ? 'QR Code Active' : 'Reveal QR Code'}
-          </button>
+              {qrType === 'phone' && (
+                <motion.div
+                  key="phone"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.16 }}
+                  style={styles.inputGroup}
+                >
+                  <input
+                    className="pill-input"
+                    type="tel"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                    placeholder="e.g., +1 (555) 000-0000"
+                    style={styles.pillInput}
+                  />
+                </motion.div>
+              )}
 
-          <p style={styles.footerNote}>
-            Click the pixel art or button to reveal • Types auto-reset
-          </p>
+              {qrType === 'wifi' && (
+                <motion.div
+                  key="wifi"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.16 }}
+                  style={styles.wifiContainer}
+                >
+                  <input
+                    className="pill-input"
+                    type="text"
+                    value={wifiSsid}
+                    onChange={handleWifiSsidChange}
+                    placeholder="e.g., Network Name (SSID)"
+                    style={styles.pillInput}
+                  />
+
+                  <input
+                    className="pill-input"
+                    type="password"
+                    value={wifiPassword}
+                    onChange={handleWifiPasswordChange}
+                    placeholder="Network Password"
+                    style={styles.pillInput}
+                  />
+
+                  <select
+                    className="pill-input"
+                    value={wifiEncryption}
+                    onChange={handleWifiEncryptionChange}
+                    style={styles.pillSelect}
+                  >
+                    <option value="WPA">WPA / WPA2 / WPA3</option>
+                    <option value="WEP">WEP</option>
+                    <option value="nopass">Open (No Password)</option>
+                  </select>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Action Button matching Image 2 "Continue" pill button */}
+            <button
+              className="action-pill-btn"
+              style={styles.actionPillBtn}
+              onClick={handlePanelClick}
+            >
+              {isRevealed ? 'QR Code Active' : 'Reveal QR Code'}
+            </button>
+
+            <p style={styles.footerNote}>
+              Click the pixel art or button to reveal • Types auto-reset
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -641,48 +663,6 @@ function App() {
 }
 
 const styles = {
-  pageWrapper: {
-    minHeight: '100vh',
-    width: '100vw',
-    backgroundColor: '#ffffff',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '30px 20px',
-    boxSizing: 'border-box',
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  },
-  splitContainer: {
-    display: 'flex',
-    flexDirection: 'row',
-    width: '100%',
-    maxWidth: '860px',
-    backgroundColor: '#ffffff',
-    borderRadius: '28px',
-    overflow: 'hidden',
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.05)',
-  },
-  leftPanel: {
-    width: '400px',
-    height: '520px',
-    backgroundColor: '#ffffff',
-    borderRight: '1px solid #f1f5f9',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    cursor: 'pointer',
-    overflow: 'hidden',
-    userSelect: 'none',
-  },
-  particleCanvas: {
-    width: '360px',
-    height: '360px',
-    display: 'block',
-    zIndex: 2,
-    borderRadius: '16px',
-  },
   qrWrapper: {
     position: 'absolute',
     zIndex: 5,
@@ -692,9 +672,9 @@ const styles = {
     justifyContent: 'center',
     gap: '16px',
     backgroundColor: '#ffffff',
-    padding: '16px',
+    padding: '20px',
     borderRadius: '24px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.1)',
     border: '1px solid #e5e7eb',
   },
   canvasFrame: {
@@ -710,7 +690,7 @@ const styles = {
   },
   downloadPillBtn: {
     width: '100%',
-    padding: '11px 20px',
+    padding: '11px 24px',
     fontSize: '13px',
     fontWeight: '600',
     cursor: 'pointer',
@@ -719,14 +699,6 @@ const styles = {
     backgroundColor: '#111827',
     color: '#ffffff',
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-  },
-  rightPanel: {
-    flex: 1,
-    padding: '36px 40px',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
   },
   headerGroup: {
     display: 'flex',
@@ -740,7 +712,7 @@ const styles = {
   },
   heading: {
     margin: 0,
-    fontSize: '22px',
+    fontSize: '24px',
     fontWeight: '600',
     color: '#111827',
     letterSpacing: '-0.02em',
