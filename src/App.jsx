@@ -70,6 +70,17 @@ const QR_TYPES = [
   },
 ];
 
+// Rosette Geometric Symbol from reference screenshot
+const RosetteIcon = () => (
+  <svg width="34" height="34" viewBox="0 0 32 32" fill="none" stroke="#1f2937" strokeWidth="1.35">
+    <circle cx="16" cy="16" r="4.5" />
+    <ellipse cx="16" cy="16" rx="10.5" ry="5.5" transform="rotate(0 16 16)" />
+    <ellipse cx="16" cy="16" rx="10.5" ry="5.5" transform="rotate(45 16 16)" />
+    <ellipse cx="16" cy="16" rx="10.5" ry="5.5" transform="rotate(90 16 16)" />
+    <ellipse cx="16" cy="16" rx="10.5" ry="5.5" transform="rotate(135 16 16)" />
+  </svg>
+);
+
 function App() {
   const [qrType, setQrType] = useState('url');
   const [text, setText] = useState('https://google.com');
@@ -282,32 +293,6 @@ function App() {
     particlesRef.current = particles;
   }, []);
 
-  // Trigger circular turnover explosion when hovering over Google logo particles
-  const triggerReveal = useCallback(() => {
-    if (isRevealedRef.current) return;
-    setIsRevealed(true);
-    isRevealedRef.current = true;
-
-    const canvas = particleCanvasRef.current;
-    const width = canvas ? canvas.width : 600;
-    const height = canvas ? canvas.height : 600;
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    particlesRef.current.forEach((p) => {
-      const dx = p.x - centerX;
-      const dy = p.y - centerY;
-      const angle = Math.atan2(dy, dx);
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const speed = 3.2 + Math.random() * 4.5 + (dist / width) * 3.5;
-
-      p.vx = Math.cos(angle) * speed;
-      p.vy = Math.sin(angle) * speed;
-      p.rotSpeed = (Math.random() - 0.5) * 0.25;
-      p.flipSpeed = 0.1 + Math.random() * 0.1;
-    });
-  }, []);
-
   // Setup Canvas and Animation Loop
   useEffect(() => {
     const canvas = particleCanvasRef.current;
@@ -335,20 +320,6 @@ function App() {
       const rect = canvas.getBoundingClientRect();
       mouseX = e.clientX - rect.left;
       mouseY = e.clientY - rect.top;
-
-      // Check if mouse hovers over any Google logo particle to reveal QR code
-      if (!isRevealedRef.current) {
-        const hoveredLogo = particlesRef.current.some((p) => {
-          if (!p.isLogo) return false;
-          const dx = mouseX - p.originX;
-          const dy = mouseY - p.originY;
-          return Math.abs(dx) <= 12 && Math.abs(dy) <= 12;
-        });
-
-        if (hoveredLogo) {
-          triggerReveal();
-        }
-      }
     };
 
     const handleMouseLeave = () => {
@@ -453,7 +424,32 @@ function App() {
       canvas.removeEventListener('mouseleave', handleMouseLeave);
       window.removeEventListener('resize', updateCanvasSize);
     };
-  }, [setupParticles, triggerReveal]);
+  }, [setupParticles]);
+
+  // Trigger circular turnover explosion when clicking panel
+  const handlePanelClick = () => {
+    if (isRevealed) return;
+    setIsRevealed(true);
+
+    const canvas = particleCanvasRef.current;
+    const width = canvas ? canvas.width : 600;
+    const height = canvas ? canvas.height : 600;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    particlesRef.current.forEach((p) => {
+      const dx = p.x - centerX;
+      const dy = p.y - centerY;
+      const angle = Math.atan2(dy, dx);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const speed = 3.2 + Math.random() * 4.5 + (dist / width) * 3.5;
+
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed;
+      p.rotSpeed = (Math.random() - 0.5) * 0.25;
+      p.flipSpeed = 0.1 + Math.random() * 0.1;
+    });
+  };
 
   return (
     <div className="page-wrapper">
@@ -462,7 +458,8 @@ function App() {
         <div
           ref={leftPanelRef}
           className="split-panel-left"
-          title={isRevealed ? '' : 'Hover over Google logo to reveal QR code'}
+          onClick={handlePanelClick}
+          title={isRevealed ? '' : 'Click to explode pixels and reveal QR code'}
         >
           {/* Full-width dynamic particle canvas */}
           <canvas
