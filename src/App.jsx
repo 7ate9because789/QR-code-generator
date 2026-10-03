@@ -556,6 +556,9 @@ function App() {
                     placeholder={qrType === 'url' ? 'e.g., https://google.com' : 'e.g., Type message here...'}
                     style={styles.pillInput}
                   />
+                  <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>
+                    Click the Google logo to reveal the QR code
+                  </p>
                 </motion.div>
               )}
 
